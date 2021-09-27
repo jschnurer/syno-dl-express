@@ -1,0 +1,76 @@
+<html>
+
+<head>
+  <style>
+    #response {
+      border: 1px black solid;
+      padding: 1em;
+    }
+
+    textarea {
+      display: block;
+      width: 100%;
+      height: 200px;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.2.0/socket.io.js"></script>
+  <script>
+    const socket = io();
+
+    socket.on('started', function () {
+      toggleForm(false);
+      appendOutput("Processing urls...");
+    });
+
+    socket.on('progress', function (msg) {
+      appendOutput(msg);
+    });
+
+    socket.on('done', function () {
+      appendOutput("Task complete!");
+      toggleForm(true);
+    });
+
+    socket.on('error', function (msg) {
+      appendOutput(msg);
+      toggleForm(true);
+    });
+
+    function submitUrls() {
+      let urls = document.getElementById("urls").value.split('\n').map(x => x.trim()).filter(x => !!x);
+
+      if (!urls.length) {
+        alert("You must specify at least 1 url!");
+        return;
+      }
+
+      socket.emit('submitUrls', urls);
+    }
+
+    function appendOutput(msg) {
+      var div = document.getElementById('response');
+      div.innerText += (div.innerText ? '\r\n' : '') + msg;
+    }
+
+    function toggleForm(isEnabled) {
+      document.getElementById('button').disabled = !isEnabled;
+    }
+  </script>
+</head>
+
+<body>
+  <textarea id="urls" placeholder="Paste URLs here 1/line"></textarea>
+  <label>
+    <input type="checkbox" id="makeFolders" checked="checked" /> Make Folders
+  </label>
+  <br />
+  <button id="button" onclick="submitUrls();">
+    Download URLs
+  </button>
+  <br />
+  <br />
+  <label>Output</label><br />
+  <div id="response"></div>
+</body>
+
+</html>
