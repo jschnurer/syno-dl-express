@@ -1,8 +1,11 @@
-const app = require('express')();
+const express = require('express');
+const app = express();
 const http = require('http').Server(app);
 const io = require('socket.io')(http);
 const downloader = require("./downloader.js");
 const settings = require("./local.settings.json");
+
+app.use(express.json());
 
 app.get('/', function (req, res) {
   res.sendFile(__dirname + '/index.html');
@@ -10,7 +13,11 @@ app.get('/', function (req, res) {
 
 app.post('/submitUrls', async function (req, res) {
   try {
-    await downloader.handleUrlsAsync(urls, settings.synoSettings);
+    if (!req.body.urls) {
+      throw new Error("no urls prop specified in request body.");
+    }
+
+    await downloader.handleUrlsAsync(req.body.urls, settings.synoSettings);
 
     res.sendStatus(200);
   } catch (err) {
