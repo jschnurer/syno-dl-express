@@ -1,12 +1,27 @@
 const express = require('express');
 const app = express();
-const http = require('http').Server(app);
+const https = require("https");
+const http = require('http');
 const io = require('socket.io')(http);
 const downloader = require("./downloader.js");
 const settings = require("./local.settings.json");
-const cors = require('cors')
+const cors = require('cors');
+const fs = require("fs");
 
-app.use(cors());
+const path = `/etc/letsencrypt/live/${settings.serverName}`;
+const privateKey = fs.readFileSync(`${path}/privkey.pem`, 'utf8');
+const certificate = fs.readFileSync(`${path}/cert.pem`, 'utf8');
+const ca = fs.readFileSync(`${path}/chain.pem`, 'utf8');
+const credentials = {
+  key: privateKey,
+  cert: certificate,
+  ca: ca
+};
+const httpsServer = https.createServer(credentials, app);
+const httpServer = http.createServer(app);
+
+app.use('*', cors());
+app.options("*", cors());
 app.use(express.json());
 
 app.get('/', function (req, res) {
@@ -56,6 +71,9 @@ io.on('connection', async function (socket) {
   });
 });
 
-http.listen(settings.port, function () {
-  console.log(`listening on *:${settings.port}`);
+httpServer.listen(settings.httpPort, function () {
+  console.log(`listening on *:${settings.httpPort}`);
+});
+httpsServer.listen(settings.httpsPort, function () {
+  console.log(`listening (ssl) on *:${settings.httpsPort}`);
 });

@@ -1,0 +1,110 @@
+javascript: (() => {
+    const build_path = (...args) => {
+        return args.map((part, i) => {
+            if (i === 0) {
+                return part.trim().replace(/[\/]*$/g, '')
+            } else {
+                return part.trim().replace(/(^[\/]*|[\/]*$)/g, '')
+            }
+        }).filter(x => x.length).join('/')
+    };
+    var div = document.getElementById("____url-list");
+    if (!div) {
+        div = document.createElement("div");
+        div.id = "____url-list";
+		div.style.margin = "1em";
+        document.body.append(div);
+    } else {
+        div.innerHTML = '';
+    }
+    var getUrlsBtn = document.getElementById("___getUrls");
+    if (!getUrlsBtn) {
+        getUrlsBtn = document.createElement('button');
+        getUrlsBtn.onclick = function () {
+            var txt = document.getElementById("____txt");
+            if (!txt) {
+                txt = document.createElement("textarea");
+                txt.id = "____txt";
+                txt.style.height = "250px";
+                txt.style.width = "500px";
+                txt.style.display = "block";
+                document.body.append(txt);
+            }
+            var urls = [];
+            var chks = document.getElementsByClassName("__url");
+            for (let index = 0; index < chks.length; index++) {
+                if (chks[index].checked) {
+                    urls.push(chks[index].value);
+                }
+            }
+            txt.value = urls.join('\r\n');
+            txt.select();
+            document.execCommand("copy");
+        };
+        getUrlsBtn.innerText = "Get URLs";
+        document.body.append(getUrlsBtn);
+    }
+    var startDLBtn = document.getElementById("___startDL");
+    if (!startDLBtn) {
+        startDLBtn = document.createElement('button');
+        startDLBtn.onclick = async function () {
+            var urls = [];
+            var chks = document.getElementsByClassName("__url");
+            for (let index = 0; index < chks.length; index++) {
+                if (chks[index].checked) {
+                    urls.push(chks[index].value);
+                }
+            }
+
+			startDLBtn.innerText = "Working. . .";
+            try {
+                const resp = await fetch("https://192.168.1.138:4326/submitUrls", {
+                    method: "POST",
+					mode: "cors",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        urls: urls
+                    }),
+                });
+                if (resp.status !== 200) {
+                    alert("Failed to send to NAS.");
+                } else {
+                    alert(urls.length + ' download(s) queued!');
+                }
+            } catch (err) {
+                alert(err.toString());
+            } finally {
+				startDLBtn.innerText = "Queue Downloads";
+			}
+        };
+        startDLBtn.innerText = "Queue Downloads";
+        document.body.append(startDLBtn);
+    }
+    const items = document.querySelectorAll('a');
+    for (let index = 0; index < items.length; index++) {
+        const item = items[index];
+        const href = item.getAttribute('href');
+        if (href != '..' && href != '../') {
+            let url = '';
+            if (href.indexOf("/") === 0) {
+                url = window.location.origin + href;
+            } else {
+                url = build_path(window.location.href, href);
+            }
+            if (url.lastIndexOf('.') > url.lastIndexOf('/')) {
+                var lbl = document.createElement('label');
+                lbl.style.display = "block";
+                var chk = document.createElement('input');
+                chk.type = 'checkbox';
+                chk.checked = "checked";
+                chk.value = url;
+                chk.className = "__url";
+                lbl.appendChild(chk);
+                lbl.appendChild(document.createTextNode(href));
+                div.appendChild(lbl);
+            }
+        }
+    }
+})();
