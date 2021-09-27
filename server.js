@@ -4,7 +4,9 @@ const http = require('http').Server(app);
 const io = require('socket.io')(http);
 const downloader = require("./downloader.js");
 const settings = require("./local.settings.json");
+const cors = require('cors')
 
+app.use(cors());
 app.use(express.json());
 
 app.get('/', function (req, res) {
