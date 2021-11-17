@@ -47,6 +47,17 @@
       socket.emit('submitUrls', urls);
     }
 
+    function submitMagnets() {
+      let urls = document.getElementById("urls").value.split('\n').map(x => x.trim()).filter(x => !!x);
+
+      if (!urls.length) {
+        alert("You must specify at least 1 url!");
+        return;
+      }
+
+      socket.emit('submitMagnets', urls);
+    }
+
     function appendOutput(msg) {
       var div = document.getElementById('response');
       div.innerText += (div.innerText ? '\r\n' : '') + msg;
@@ -66,6 +77,9 @@
   <br />
   <button id="button" onclick="submitUrls();">
     Download URLs
+  </button>
+  <button id="button" onclick="submitMagnets();">
+    Send Magnet to Deluge
   </button>
   <br />
   <br />

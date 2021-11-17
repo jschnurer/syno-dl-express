@@ -7,6 +7,7 @@ const downloader = require("./downloader.js");
 const settings = require("./local.settings.json");
 const cors = require('cors');
 const fs = require("fs");
+const { addMagnet } = require('./deluger.js');
 
 const path = `/etc/letsencrypt/live/${settings.serverName}`;
 const privateKey = fs.readFileSync(`${path}/privkey.pem`, 'utf8');
@@ -42,6 +43,20 @@ app.post('/submitUrls', async function (req, res) {
   }
 });
 
+app.post('/submitMagnet', async function (req, res) {
+  try {
+    if (!req.body.url) {
+      throw new Error("no url prop specified in request body.");
+    }
+
+    await addMagnet(req.body.url);
+
+    res.sendStatus(200);
+  } catch (err) {
+    res.status(500).send(err.toString());
+  }
+});
+
 io.on('connection', async function (socket) {
   console.log('A user connected');
 
@@ -57,6 +72,25 @@ io.on('connection', async function (socket) {
         (progressMessage) => {
           io.emit('progress', progressMessage);
         });
+
+      console.log("Done.");
+      io.emit("done");
+    } catch (err) {
+      console.log(err);
+      io.emit('error', err.toString());
+    }
+  });
+
+  socket.on('submitMagnets', async function (urls) {
+    console.log(`Received urls:\n${JSON.stringify(urls, null, 2)}`);
+
+    io.emit("started");
+
+    try {
+      for (let i = 0; i < urls.length; i++) {
+        await addMagnet(urls[i]);
+        console.log(`Added magnet: ${urls[i]}`);
+      }
 
       console.log("Done.");
       io.emit("done");
