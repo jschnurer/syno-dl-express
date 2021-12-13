@@ -71,14 +71,26 @@ The app will find the `createPathAfterUrlComponent` value ("/downloads") in the 
 
 Finally, the file will be downloaded to `\\Downloads\2021\12\songs`.
 
+If no `createPathAfterUrlComponent` is specified, or if no domainHandler is found for a given URL, it will simply download the target file directly to the `synoSettings.baseDownloadDir`.
+
 # Using the server
 
 ## Submitting files to Download Station
-Make an HTTP POST to `/submitUrls` and send a JSON body with the following format:
+Make an HTTP POST to `/submitUrls` with the following JSON body format:
+
 ```json
 {
     "urls": ["url1", "url2", "etc"]
 }
 ```
 
-The folder structure will be replicated
+## Submitting a magnet link to deluge
+Make an HTTP POST to `/submitMagnet` with the following JSON body format;
+
+```json
+{
+    "url": "the url to download"
+}
+```
+
+The magnet url specified in "url" will be sent to the deluge install located at `settings.deluge.url`, using the password specified in `settings.deluge.password`. The torrent will be downloaded to `settings.deluge.dlPath`.
