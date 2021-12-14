@@ -179,4 +179,6 @@ function tryInjectCredentials(url, settings) {
 
 module.exports = {
   handleUrlsAsync,
+  findDomainHandler,
+  tryInjectCredentials,
 };

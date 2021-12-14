@@ -4,6 +4,7 @@ const https = require("https");
 const http = require('http');
 const io = require('socket.io')(http);
 const downloader = require("./downloader.js");
+const folderDownloader = require("./folderDownloader.js");
 const settings = require("./local.settings.json");
 const cors = require('cors');
 const fs = require("fs");
@@ -63,6 +64,21 @@ app.post('/submitMagnet', async function (req, res) {
     }
 
     await addMagnet(req.body.url);
+
+    res.sendStatus(200);
+  } catch (err) {
+    res.status(500).send(err.toString());
+  }
+});
+
+app.post('/recurseFolders', async function (req, res) {
+  try {
+    if (!req.body.urls
+      || !req.body.urls.length) {
+      throw new Error("no urls prop specified in request body.");
+    }
+
+    await folderDownloader.handleUrlsAsync(req.body.urls, settings);
 
     res.sendStatus(200);
   } catch (err) {
