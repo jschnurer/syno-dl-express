@@ -4,22 +4,36 @@ const https = require("https");
 const http = require('http');
 const io = require('socket.io')(http);
 const downloader = require("./downloader.js");
+const folderDownloader = require("./folderDownloader.js");
 const settings = require("./local.settings.json");
 const cors = require('cors');
 const fs = require("fs");
+const path = require('path');
 const { addMagnet } = require('./deluger.js');
 
-const path = `/etc/letsencrypt/live/${settings.serverName}`;
-const privateKey = fs.readFileSync(`${path}/privkey.pem`, 'utf8');
-const certificate = fs.readFileSync(`${path}/cert.pem`, 'utf8');
-const ca = fs.readFileSync(`${path}/chain.pem`, 'utf8');
-const credentials = {
-  key: privateKey,
-  cert: certificate,
-  ca: ca
-};
-const httpsServer = https.createServer(credentials, app);
-const httpServer = http.createServer(app);
+if (!settings.useHttp
+  && !settings.useHttps) {
+  throw new Error("Either/or 'useHttp', 'useHttps' must be true!");
+}
+
+let httpServer;
+let httpsServer;
+
+if (settings.useHttps) {
+  const privateKey = fs.readFileSync(path.join(settings.sslCertPath, 'privkey.pem'), 'utf8');
+  const certificate = fs.readFileSync(path.join(settings.sslCertPath, 'cert.pem'), 'utf8');
+  const ca = fs.readFileSync(path.join(settings.sslCertPath, 'chain.pem'), 'utf8');
+  const credentials = {
+    key: privateKey,
+    cert: certificate,
+    ca: ca,
+  };
+  httpsServer = https.createServer(credentials, app);
+}
+
+if (settings.useHttp) {
+  httpServer = http.createServer(app);
+}
 
 app.use('*', cors());
 app.options("*", cors());
@@ -50,6 +64,21 @@ app.post('/submitMagnet', async function (req, res) {
     }
 
     await addMagnet(req.body.url);
+
+    res.sendStatus(200);
+  } catch (err) {
+    res.status(500).send(err.toString());
+  }
+});
+
+app.post('/recurseFolders', async function (req, res) {
+  try {
+    if (!req.body.urls
+      || !req.body.urls.length) {
+      throw new Error("no urls prop specified in request body.");
+    }
+
+    await folderDownloader.handleUrlsAsync(req.body.urls, settings);
 
     res.sendStatus(200);
   } catch (err) {
@@ -105,9 +134,14 @@ io.on('connection', async function (socket) {
   });
 });
 
-httpServer.listen(settings.httpPort, function () {
-  console.log(`listening on *:${settings.httpPort}`);
-});
-httpsServer.listen(settings.httpsPort, function () {
-  console.log(`listening (ssl) on *:${settings.httpsPort}`);
-});
+if (settings.useHttp) {
+  httpServer.listen(settings.httpPort, function () {
+    console.log(`listening on *:${settings.httpPort}`);
+  });
+}
+
+if (settings.useHttps) {
+  httpsServer.listen(settings.httpsPort, function () {
+    console.log(`listening (ssl) on *:${settings.httpsPort}`);
+  });
+}
