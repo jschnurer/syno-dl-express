@@ -20,9 +20,9 @@ let httpServer;
 let httpsServer;
 
 if (settings.useHttps) {
-  const privateKey = fs.readFileSync(path.combine(settings.sslCertPath, 'privkey.pem'), 'utf8');
-  const certificate = fs.readFileSync(path.combine(settings.sslCertPath, 'cert.pem'), 'utf8');
-  const ca = fs.readFileSync(path.combine(settings.sslCertPath, 'chain.pem'), 'utf8');
+  const privateKey = fs.readFileSync(path.join(settings.sslCertPath, 'privkey.pem'), 'utf8');
+  const certificate = fs.readFileSync(path.join(settings.sslCertPath, 'cert.pem'), 'utf8');
+  const ca = fs.readFileSync(path.join(settings.sslCertPath, 'chain.pem'), 'utf8');
   const credentials = {
     key: privateKey,
     cert: certificate,

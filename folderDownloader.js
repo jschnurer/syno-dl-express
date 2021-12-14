@@ -58,7 +58,8 @@ async function downloadPage(url, settings) {
 }
 
 function gatherLinks(html) {
-  var matches = [...html.matchAll(/a href="(.+?)"/g)];
+  var linkUrls = html.toString().matchAll(/a href="(.+?)"/g);
+  var matches = [...linkUrls];
 
   if (!matches) {
     return [];
