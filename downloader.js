@@ -103,7 +103,7 @@ async function createNestedFolders(urls, syno, settings, outputProgressMessage) 
         ? settings.baseDownloadDir
         : [settings.baseDownloadDir, ...parentFolders].join('/');
 
-      var promise = new Promise(resolve => {
+      var promise = new Promise((resolve, reject) => {
         syno.fs.createFolder({
           folder_path: folder_path,
           name: folderName,
