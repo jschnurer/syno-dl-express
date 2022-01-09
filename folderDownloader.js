@@ -23,19 +23,19 @@ async function recurseFolder(folderUrl, allUrls, allFolders, depth, outputProgre
     throw new Error("All folder urls to recurse must end with '/'!");
   }
 
-  let urls = gatherLinks(await downloadPage(folderUrl, settings))
+  let pageUrls = gatherLinks(await downloadPage(folderUrl, settings))
     .filter(x => !x.startsWith(".."));
 
   // Add this downloaded page to the folders list.
   allFolders.push(folderUrl.toLowerCase());
 
-  allUrls.push(...urls.filter(x => !x.endsWith("/"))
+  allUrls.push(...pageUrls.filter(x => !x.endsWith("/"))
     .map(x => x.startsWith("/")
       ? undefined
       : folderUrl + x
       ));
 
-  let subFolders = allUrls.filter(x => x.endsWith("/"));
+  let subFolders = pageUrls.filter(x => x.endsWith("/"));
 
   if (depth >= settings.folderDownloader.maxDepth) {
     outputProgressMessage(`MAX DEPTH REACHED! SKIPPING: ${subFolders.join("\r\n")}`)
@@ -48,7 +48,7 @@ async function recurseFolder(folderUrl, allUrls, allFolders, depth, outputProgre
       continue;
     }
 
-    await recurseFolder(subFolders[i], allUrls, depth+1, outputProgressMessage, settings);
+    await recurseFolder(folderUrl + subFolders[i], allUrls, allFolders, depth+1, outputProgressMessage, settings);
   }
 }
 
