@@ -15,7 +15,7 @@ async function handleUrlsAsync(urls, settings, outputProgressMessage) {
   }
 
   // Use the downloader to handle all the URLs.
-  await downloader.handleUrlsAsync(allUrls, settings.synoSettings, outputProgressMessage);
+  await downloader.handleUrlsAsync(allUrls, true, settings.synoSettings, outputProgressMessage);
 }
 
 async function recurseFolder(folderUrl, allUrls, allFolders, depth, outputProgressMessage, settings) {

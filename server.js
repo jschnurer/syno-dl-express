@@ -49,7 +49,9 @@ app.post('/submitUrls', async function (req, res) {
       throw new Error("no urls prop specified in request body.");
     }
 
-    await downloader.handleUrlsAsync(req.body.urls, settings.synoSettings);
+    await downloader.handleUrlsAsync(req.body.urls,
+      req.body.makeFolders === undefined || req.body.makeFolders,
+      settings.synoSettings);
 
     res.sendStatus(200);
   } catch (err) {
@@ -97,6 +99,7 @@ io.on('connection', async function (socket) {
 
     try {
       await downloader.handleUrlsAsync(urls,
+        true,
         settings.synoSettings,
         (progressMessage) => {
           io.emit('progress', progressMessage);

@@ -1,6 +1,6 @@
 const Syno = require('syno');
 
-async function handleUrlsAsync(urls, settings, outputProgressMessage) {
+async function handleUrlsAsync(urls, makeFolders, settings, outputProgressMessage) {
   if (!urls.length) {
     throw new Error("No urls were provided!");
   }
@@ -14,22 +14,26 @@ async function handleUrlsAsync(urls, settings, outputProgressMessage) {
     apiVersion: settings.apiVersion || '6.0.2',
   });
 
-  await createNestedFolders(urls, syno, settings, outputProgressMessage);
-  await createDownloadTasks(urls, syno, settings, outputProgressMessage);
+  if (makeFolders) {
+    await createNestedFolders(urls, syno, settings, outputProgressMessage);
+  }
+  await createDownloadTasks(urls, makeFolders, syno, settings, outputProgressMessage);
 }
 
-async function createDownloadTasks(urls, syno, settings, outputProgressMessage) {
+async function createDownloadTasks(urls, makeFolders, syno, settings, outputProgressMessage) {
   for (let i = 0; i < urls.length; i++) {
     let destination = `${settings.baseDownloadDir}`
 
-    const folderPath = getFolderPath([urls[i]], settings)[0];
+    if (makeFolders) {
+      const folderPath = getFolderPath([urls[i]], settings)[0];
 
-    if (folderPath) {
-      destination += `/${folderPath}`;
-    }
+      if (folderPath) {
+        destination += `/${folderPath}`;
+      }
 
-    if (destination.startsWith('/')) {
-      destination = destination.slice(1);
+      if (destination.startsWith('/')) {
+        destination = destination.slice(1);
+      }
     }
 
     let url = tryInjectCredentials(urls[i], settings);
