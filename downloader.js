@@ -30,10 +30,10 @@ async function createDownloadTasks(urls, makeFolders, syno, settings, outputProg
       if (folderPath) {
         destination += `/${folderPath}`;
       }
-
-      if (destination.startsWith('/')) {
-        destination = destination.slice(1);
-      }
+    }
+    
+    if (destination.startsWith('/')) {
+      destination = destination.slice(1);
     }
 
     let url = tryInjectCredentials(urls[i], settings);
