@@ -55,6 +55,7 @@ app.post('/submitUrls', async function (req, res) {
 
     res.sendStatus(200);
   } catch (err) {
+    console.log(err);
     res.status(500).send(err.toString());
   }
 });
@@ -69,6 +70,7 @@ app.post('/submitMagnet', async function (req, res) {
 
     res.sendStatus(200);
   } catch (err) {
+    console.log(err);
     res.status(500).send(err.toString());
   }
 });
@@ -84,6 +86,7 @@ app.post('/recurseFolders', async function (req, res) {
 
     res.sendStatus(200);
   } catch (err) {
+    console.log(err);
     res.status(500).send(err.toString());
   }
 });
