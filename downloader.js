@@ -1,6 +1,10 @@
 const Syno = require('syno');
 
-async function handleUrlsAsync(urls, makeFolders, settings, outputProgressMessage) {
+/**
+ * Handles an incoming array of urls and downloads them all.
+ * If customFolderName is specified, it will download them into that folder.
+ */
+async function handleUrlsAsync(urls, makeFolders, settings, outputProgressMessage, customFolderName) {
   if (!urls.length) {
     throw new Error("No urls were provided!");
   }
@@ -17,10 +21,10 @@ async function handleUrlsAsync(urls, makeFolders, settings, outputProgressMessag
   if (makeFolders) {
     await createNestedFolders(urls, syno, settings, outputProgressMessage);
   }
-  await createDownloadTasks(urls, makeFolders, syno, settings, outputProgressMessage);
+  await createDownloadTasks(urls, makeFolders, syno, settings, outputProgressMessage, customFolderName);
 }
 
-async function createDownloadTasks(urls, makeFolders, syno, settings, outputProgressMessage) {
+async function createDownloadTasks(urls, makeFolders, syno, settings, outputProgressMessage, customFolderName) {
   for (let i = 0; i < urls.length; i++) {
     let destination = `${settings.baseDownloadDir}`
 
@@ -30,6 +34,8 @@ async function createDownloadTasks(urls, makeFolders, syno, settings, outputProg
       if (folderPath) {
         destination += `/${folderPath}`;
       }
+    } else if (customFolderName) {
+      destination += `/${customFolderName}`;
     }
     
     if (destination.startsWith('/')) {
@@ -37,6 +43,23 @@ async function createDownloadTasks(urls, makeFolders, syno, settings, outputProg
     }
 
     let url = tryInjectCredentials(urls[i], settings);
+
+    // Ensure the target folder exists before downloading.
+    var folderPromise = new Promise((resolve, reject) => {
+      syno.fs.createFolder({
+        folder_path: settings.baseDownloadDir,
+        name: customFolderName,
+      }, (err) => {
+
+        if (err) {
+          reject(err);
+        }
+
+        resolve();
+      });
+    });
+
+    await folderPromise;
 
     var promise = new Promise((resolve) => {
       syno.dl.createTask({

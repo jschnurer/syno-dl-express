@@ -51,7 +51,9 @@ app.post('/submitUrls', async function (req, res) {
 
     await downloader.handleUrlsAsync(req.body.urls,
       req.body.makeFolders === undefined || req.body.makeFolders,
-      settings.synoSettings);
+      settings.synoSettings,
+      null,
+      req.body.folderName);
 
     res.sendStatus(200);
   } catch (err) {
