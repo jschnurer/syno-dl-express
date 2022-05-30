@@ -37,27 +37,29 @@ async function createDownloadTasks(urls, makeFolders, syno, settings, outputProg
     } else if (customFolderName) {
       destination += `/${customFolderName}`;
     }
-    
+
     if (destination.startsWith('/')) {
       destination = destination.slice(1);
     }
 
     let url = tryInjectCredentials(urls[i], settings);
 
-    // Ensure the target folder exists before downloading.
-    var folderPromise = new Promise((resolve, reject) => {
-      syno.fs.createFolder({
-        folder_path: settings.baseDownloadDir,
-        name: customFolderName,
-      }, (err) => {
+    if (customFolderName) {
+      // Ensure the target folder exists before downloading.
+      var folderPromise = new Promise((resolve, reject) => {
+        syno.fs.createFolder({
+          folder_path: settings.baseDownloadDir,
+          name: customFolderName,
+        }, (err) => {
 
-        if (err) {
-          reject(err);
-        }
+          if (err) {
+            reject(err);
+          }
 
-        resolve();
+          resolve();
+        });
       });
-    });
+    }
 
     await folderPromise;
 
