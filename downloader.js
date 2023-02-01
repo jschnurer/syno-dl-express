@@ -21,10 +21,14 @@ async function handleUrlsAsync(urls, makeFolders, settings, outputProgressMessag
   if (makeFolders) {
     await createNestedFolders(urls, syno, settings, outputProgressMessage);
   }
+
   await createDownloadTasks(urls, makeFolders, syno, settings, outputProgressMessage, customFolderName);
 }
 
 async function createDownloadTasks(urls, makeFolders, syno, settings, outputProgressMessage, customFolderName) {
+  let foldersToMake = [];
+  let filesToDownload = [];
+
   for (let i = 0; i < urls.length; i++) {
     let destination = `${settings.baseDownloadDir}`
 
@@ -45,46 +49,23 @@ async function createDownloadTasks(urls, makeFolders, syno, settings, outputProg
     let url = tryInjectCredentials(urls[i], settings);
 
     if (customFolderName) {
-      // Ensure the target folder exists before downloading.
-      var folderPromise = new Promise((resolve, reject) => {
-        syno.fs.createFolder({
-          folder_path: settings.baseDownloadDir,
-          name: customFolderName,
-        }, (err) => {
-
-          if (err) {
-            reject(err);
-          }
-
-          resolve();
-        });
-      });
+      foldersToMake.push({ path: settings.baseDownloadDir, folderName: customFolderName });
     }
 
-    await folderPromise;
+    filesToDownload.push({ url, destination });
+  }
 
-    var promise = new Promise((resolve) => {
-      syno.dl.createTask({
-        uri: url,
-        destination: destination,
-      }, () => {
-        resolve();
-      });
-    });
+  await makeAllFolders(syno, foldersToMake);
 
-    await promise;
-
-    const msg = `Downloading ${urls[i]} to ${destination}`;
-    console.log(msg);
-
-    if (outputProgressMessage) {
-      outputProgressMessage(msg);
-    }
+  for (let i = 0; i < filesToDownload.length; i++) {
+    await downloadFile(syno, filesToDownload[i].url, filesToDownload[i].destination);
   }
 }
 
 async function createNestedFolders(urls, syno, settings, outputProgressMessage) {
   const folderPaths = getFolderPath(urls, settings);
+
+  let foldersToMake = [];
 
   for (let f = 0; f < folderPaths.length; f++) {
     const path = folderPaths[f];
@@ -103,27 +84,7 @@ async function createNestedFolders(urls, syno, settings, outputProgressMessage) 
           ? settings.baseDownloadDir
           : [settings.baseDownloadDir, ...parentFolders.slice(0, p)].join('/');
 
-        var promise = new Promise((resolve, reject) => {
-          syno.fs.createFolder({
-            folder_path: parentPath,
-            name: parentFolders[p],
-          }, (err) => {
-
-            if (err) {
-              reject(err);
-            }
-
-            resolve();
-          });
-        });
-
-        await promise;
-
-        const parentMessage = `Created ${[parentPath, parentFolders[p]].join('/')}`;
-        console.log(parentMessage);
-        if (outputProgressMessage) {
-          outputProgressMessage(parentMessage);
-        }
+        foldersToMake.push({ path: parentPath, folderName: parentFolders[p] });
       }
 
     } else {
@@ -132,29 +93,11 @@ async function createNestedFolders(urls, syno, settings, outputProgressMessage) 
         ? settings.baseDownloadDir
         : [settings.baseDownloadDir, ...parentFolders].join('/');
 
-      var promise = new Promise((resolve, reject) => {
-        syno.fs.createFolder({
-          folder_path: folder_path,
-          name: folderName,
-        }, (err) => {
-
-          if (err) {
-            reject(err);
-          }
-
-          resolve();
-        });
-      });
-
-      await promise;
-
-      const createdMessage = `Created ${settings.baseDownloadDir}/${path}`;
-      console.log(createdMessage);
-      if (outputProgressMessage) {
-        outputProgressMessage(createdMessage);
-      }
+      foldersToMake.push({ path: folder_path, folderName });
     }
   }
+
+  await makeAllFolders(syno, foldersToMake, outputProgressMessage);
 }
 
 function getFolderPath(urls, settings) {
@@ -204,6 +147,74 @@ function tryInjectCredentials(url, settings) {
   }
 
   return url.replace('://', `://${domainHandler.username}:${domainHandler.password}@`);
+}
+
+async function makeAllFolders(syno, foldersToMake, outputProgressMessage) {
+  let folderList = foldersToMake.slice();
+
+  // Distinct the folders to make.
+  for (let i = folderList.length - 1; i >= 0; i--) {
+    let thisFolder = folderList[i];
+
+    if (folderList.findIndex(x => x.folderName === thisFolder.folderName
+      && x.path === thisFolder.path) !== i) {
+      // A duplicate was found earlier.
+      delete folderList[i];
+    }
+  }
+
+  folderList = folderList.filter(x => x !== undefined);
+
+  console.log(`Distincted folder list from ${foldersToMake.length} items to ${folderList.length} items.`);
+
+  // Create all necessary folders.
+  for (let i = 0; i < folderList.length; i++) {
+    await makeFolder(syno, folderList[i].path, folderList[i].folderName, outputProgressMessage);
+  }
+}
+
+async function makeFolder(syno, path, newFolderName, outputProgressMessage) {
+  console.log(`Creating folder ${path}/${newFolderName}`);
+
+  var folderPromise = new Promise((resolve, reject) => {
+    syno.fs.createFolder({
+      folder_path: path,
+      name: newFolderName,
+      force_parent: true,
+    }, (err) => {
+      if (err) {
+        reject(err);
+      }
+
+      resolve();
+    });
+  });
+
+  await folderPromise;
+
+  const createdMessage = `Created folder ${path}/${newFolderName}`;
+  console.log(createdMessage);
+
+  if (outputProgressMessage) {
+    outputProgressMessage(createdMessage);
+  }
+}
+
+async function downloadFile(syno, url, destination) {
+  console.log(`Creating download task for ${url}`);
+
+  var promise = new Promise((resolve) => {
+    syno.dl.createTask({
+      uri: url,
+      destination: destination,
+    }, () => {
+      resolve();
+    });
+  });
+
+  await promise;
+
+  console.log(`Download task created for ${url}`);
 }
 
 module.exports = {
