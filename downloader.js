@@ -72,11 +72,13 @@ async function createDownloadTasks(urls, makeFolders, syno, settings, outputProg
     // as a task.
     const fnOnly = f.url.substr(f.url.lastIndexOf("/") + 1);
     const existingTask = allCurrentTasks.tasks.find(x =>
-      x.additional.detail.destination === f.destination
-      && x.title === fnOnly);
+      (x.additional.detail.destination === f.destination
+        || x.additional.detail.destination.replace(/ /g, "%20") === f.destination.replace(/ /g, "%20"))
+      && (x.title === fnOnly
+        || x.title.replace(/ /g, "%20") === fnOnly.replace(/ /g, "%20")));
 
     if (existingTask) {
-      console.log(`SKIPPED ${f.url}: ALREADY DOWNLOADING.`);
+      console.log(`SKIPPED (ALREADY DOWNLOADING): ${f.url}`);
     } else {
       const existingDest = filesByDestination.find(x => x.destination === f.destination);
 
