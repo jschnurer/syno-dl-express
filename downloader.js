@@ -72,10 +72,8 @@ async function createDownloadTasks(urls, makeFolders, syno, settings, outputProg
     // as a task.
     const fnOnly = f.url.substr(f.url.lastIndexOf("/") + 1);
     const existingTask = allCurrentTasks.tasks.find(x =>
-      (x.additional.detail.destination === f.destination
-        || x.additional.detail.destination.replace(/ /g, "%20") === f.destination.replace(/ /g, "%20"))
-      && (x.title === fnOnly
-        || x.title.replace(/ /g, "%20") === fnOnly.replace(/ /g, "%20")));
+      areEncodableStrsEqual(x.additional.detail.destination, f.destination)
+      && areEncodableStrsEqual(x.title, fnOnly));
 
     if (existingTask) {
       console.log(`SKIPPED (ALREADY DOWNLOADING): ${f.url}`);
@@ -99,6 +97,16 @@ async function createDownloadTasks(urls, makeFolders, syno, settings, outputProg
   for (let i = 0; i < filesByDestination.length; i++) {
     await downloadFileBatch(syno, filesByDestination[i].urls, filesByDestination[i].destination);
   }
+}
+
+function areEncodableStrsEqual(str1, str2) {
+  const enc1 = encodeURI(str1);
+  const enc2 = encodeURI(str2);
+
+  return str1 === str2
+    || enc1 === str2
+    || str1 === enc2
+    || enc1 === enc2;
 }
 
 async function getCurrentDownloadTasks(syno) {
