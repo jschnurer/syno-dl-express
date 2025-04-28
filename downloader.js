@@ -30,7 +30,7 @@ async function createDownloadTasks(urls, makeFolders, syno, settings, outputProg
   let filesToDownload = [];
 
   for (let i = 0; i < urls.length; i++) {
-    let destination = `${settings.baseDownloadDir}`
+    let destination = `${settings.baseDownloadDir}`;
 
     if (makeFolders) {
       const folderPath = getFolderPath([urls[i]], settings)[0];
@@ -55,11 +55,67 @@ async function createDownloadTasks(urls, makeFolders, syno, settings, outputProg
     filesToDownload.push({ url, destination });
   }
 
-  await makeAllFolders(syno, foldersToMake);
-
-  for (let i = 0; i < filesToDownload.length; i++) {
-    await downloadFile(syno, filesToDownload[i].url, filesToDownload[i].destination);
+  if (foldersToMake) {
+    await makeAllFolders(syno, foldersToMake);
   }
+
+  console.log("Try grouping files by destination.");
+  try {
+    // Group all the files to download by their destination folders.
+    const filesByDestination = [];
+
+    for (let i = 0; i < filesToDownload.length; i++) {
+      const f = filesToDownload[i];
+      const existingDest = filesByDestination.find(x => x.destination === f.destination);
+
+      if (!existingDest) {
+        filesByDestination.push({
+          destination: f.destination,
+          urls: [
+            f.url
+          ],
+        });
+      } else {
+        existingDest.urls.push(f.url);
+      }
+    }
+
+    // Get the list of all downloading files.
+    // const data = await getCurrentDownloadTasks(syno);
+    // console.log(":::::::::::::::::::::::::::::::::");
+    // console.log(JSON.stringify(data));
+
+    // Now, for each destination folder, tell Syno to download all the files needed to that folder.
+    for (let i = 0; i < filesByDestination.length; i++) {
+      await downloadFileBatch(syno, filesByDestination[i].urls, filesByDestination[i].destination);
+    }
+  } catch (err) {
+    console.log(err);
+  }
+}
+
+async function getCurrentDownloadTasks(syno) {
+  var taskPromise = new Promise((resolve, reject) => {
+    syno.dl.listFiles({
+      limit: -1,
+      offset: 0,
+    }, (err, arg2, arg3) => {
+      console.log("Listfiles Complete ========================")
+      console.log(err);
+      console.log("===================");
+      console.log(arg2);
+      console.log("===================");
+      console.log(arg3);
+
+      if (err) {
+        reject(err);
+      } else {
+        resolve(arg2);
+      }
+    });
+  });
+
+  return await taskPromise;
 }
 
 async function createNestedFolders(urls, syno, settings, outputProgressMessage) {
@@ -167,9 +223,62 @@ async function makeAllFolders(syno, foldersToMake, outputProgressMessage) {
 
   console.log(`Distincted folder list from ${foldersToMake.length} items to ${folderList.length} items.`);
 
+  const folderPaths = [];
+  const folderNames = [];
+
   // Create all necessary folders.
   for (let i = 0; i < folderList.length; i++) {
-    await makeFolder(syno, folderList[i].path, folderList[i].folderName, outputProgressMessage);
+    folderPaths.push(folderList[i].path);
+    if (Array.isArray(folderList[i].folderName)) {
+      folderNames.push(folderList[i].folderName[0]);
+    } else {
+      folderNames.push(folderList[i].folderName);
+    }
+  }
+
+  if (folderPaths.length
+    && folderNames.length) {
+    await makeFolderBatch(syno, folderPaths, folderNames, outputProgressMessage);
+  }
+}
+
+async function makeFolderBatch(syno, folderPathsArr, folderNamesArr, outputProgressMessage) {
+  console.log("===== CREATING BATCH FOLDERS =====");
+  console.log("=== PATHS ===");
+  console.log(JSON.stringify(folderPathsArr));
+  console.log("=== FOLDERS ===");
+  console.log(JSON.stringify(folderNamesArr));
+
+  var folderPromise = new Promise((resolve, reject) => {
+    syno.fs.createFolder({
+      folder_path: JSON.stringify(folderPathsArr),
+      // Wrap the folder name in quotes. Why? If the folder name starts with a number, the Syno API
+      // throws an unknown error. Adding quotes around it magically fixes it AND the quotes don't
+      // appear in the folder name when Syno creates the folder. Crazy.
+      name: JSON.stringify(folderNamesArr), //'"' + newFolderName + '"',
+      force_parent: true,
+    }, (err) => {
+      if (err) {
+        reject(err);
+      }
+
+      resolve();
+    });
+  });
+
+  await folderPromise;
+
+  const createdFolders = [];
+
+  for (let i = 0; i < folderPathsArr.length; i++) {
+    createdFolders.push(folderPathsArr[i] + "/" + folderNamesArr[i]);
+  }
+
+  const createdMessage = "Created folders:\n" + createdFolders.join('\n');
+  console.log(createdMessage);
+
+  if (outputProgressMessage) {
+    outputProgressMessage(createdMessage);
   }
 }
 
@@ -179,7 +288,10 @@ async function makeFolder(syno, path, newFolderName, outputProgressMessage) {
   var folderPromise = new Promise((resolve, reject) => {
     syno.fs.createFolder({
       folder_path: path,
-      name: newFolderName,
+      // Wrap the folder name in quotes. Why? If the folder name starts with a number, the Syno API
+      // throws an unknown error. Adding quotes around it magically fixes it AND the quotes don't
+      // appear in the folder name when Syno creates the folder. Crazy.
+      name: '"' + newFolderName + '"',
       force_parent: true,
     }, (err) => {
       if (err) {
@@ -215,6 +327,23 @@ async function downloadFile(syno, url, destination) {
   await promise;
 
   console.log(`Download task created for ${url}`);
+}
+
+async function downloadFileBatch(syno, urls, destination) {
+  console.log(`Creating download task for: -------------`);
+  console.log(urls.join('\n'));
+
+  var promise = new Promise((resolve) => {
+    syno.dl.createTask({
+      uri: urls.join(','),
+      destination: destination,
+    }, () => {
+      resolve();
+    });
+  });
+
+  await promise;
+  console.log("----- DONE -----");
 }
 
 module.exports = {

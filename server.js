@@ -53,7 +53,7 @@ app.post('/submitUrls', async function (req, res) {
       req.body.makeFolders === undefined || req.body.makeFolders,
       settings.synoSettings,
       null,
-      req.body.folderName);
+      req.body["folderName"] ? req.body.folderName : undefined);
 
     res.sendStatus(200);
   } catch (err) {
@@ -89,6 +89,7 @@ app.post('/recurseFolders', async function (req, res) {
     res.sendStatus(200);
   } catch (err) {
     console.log(err);
+    fs.appendFileSync('log.txt', '\n' + JSON.stringify(err));
     res.status(500).send(err.toString());
   }
 });
