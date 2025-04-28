@@ -59,13 +59,25 @@ async function createDownloadTasks(urls, makeFolders, syno, settings, outputProg
     await makeAllFolders(syno, foldersToMake);
   }
 
-  console.log("Try grouping files by destination.");
-  try {
-    // Group all the files to download by their destination folders.
-    const filesByDestination = [];
+  // Get the list of all download tasks from Syno.
+  const allCurrentTasks = await getCurrentDownloadTasks(syno);
 
-    for (let i = 0; i < filesToDownload.length; i++) {
-      const f = filesToDownload[i];
+  // Group all the files to download by their destination folders.
+  const filesByDestination = [];
+
+  for (let i = 0; i < filesToDownload.length; i++) {
+    const f = filesToDownload[i];
+
+    // Search the current tasks to see if this requested download was already created
+    // as a task.
+    const fnOnly = f.url.substr(f.url.lastIndexOf("/") + 1);
+    const existingTask = allCurrentTasks.tasks.find(x =>
+      x.additional.detail.destination === f.destination
+      && x.title === fnOnly);
+
+    if (existingTask) {
+      console.log(`SKIPPED ${f.url}: ALREADY DOWNLOADING.`);
+    } else {
       const existingDest = filesByDestination.find(x => x.destination === f.destination);
 
       if (!existingDest) {
@@ -79,38 +91,25 @@ async function createDownloadTasks(urls, makeFolders, syno, settings, outputProg
         existingDest.urls.push(f.url);
       }
     }
+  }
 
-    // Get the list of all downloading files.
-    // const data = await getCurrentDownloadTasks(syno);
-    // console.log(":::::::::::::::::::::::::::::::::");
-    // console.log(JSON.stringify(data));
-
-    // Now, for each destination folder, tell Syno to download all the files needed to that folder.
-    for (let i = 0; i < filesByDestination.length; i++) {
-      await downloadFileBatch(syno, filesByDestination[i].urls, filesByDestination[i].destination);
-    }
-  } catch (err) {
-    console.log(err);
+  // Now, for each destination folder, tell Syno to download all the files needed to that folder.
+  for (let i = 0; i < filesByDestination.length; i++) {
+    await downloadFileBatch(syno, filesByDestination[i].urls, filesByDestination[i].destination);
   }
 }
 
 async function getCurrentDownloadTasks(syno) {
   var taskPromise = new Promise((resolve, reject) => {
-    syno.dl.listFiles({
+    syno.dl.listTasks({
       limit: -1,
       offset: 0,
-    }, (err, arg2, arg3) => {
-      console.log("Listfiles Complete ========================")
-      console.log(err);
-      console.log("===================");
-      console.log(arg2);
-      console.log("===================");
-      console.log(arg3);
-
+      additional: "detail,transfer"
+    }, (err, tasks) => {
       if (err) {
         reject(err);
       } else {
-        resolve(arg2);
+        resolve(tasks);
       }
     });
   });
@@ -282,56 +281,7 @@ async function makeFolderBatch(syno, folderPathsArr, folderNamesArr, outputProgr
   }
 }
 
-async function makeFolder(syno, path, newFolderName, outputProgressMessage) {
-  console.log(`Creating folder ${path}/${newFolderName}`);
-
-  var folderPromise = new Promise((resolve, reject) => {
-    syno.fs.createFolder({
-      folder_path: path,
-      // Wrap the folder name in quotes. Why? If the folder name starts with a number, the Syno API
-      // throws an unknown error. Adding quotes around it magically fixes it AND the quotes don't
-      // appear in the folder name when Syno creates the folder. Crazy.
-      name: '"' + newFolderName + '"',
-      force_parent: true,
-    }, (err) => {
-      if (err) {
-        reject(err);
-      }
-
-      resolve();
-    });
-  });
-
-  await folderPromise;
-
-  const createdMessage = `Created folder ${path}/${newFolderName}`;
-  console.log(createdMessage);
-
-  if (outputProgressMessage) {
-    outputProgressMessage(createdMessage);
-  }
-}
-
-async function downloadFile(syno, url, destination) {
-  console.log(`Creating download task for ${url}`);
-
-  var promise = new Promise((resolve) => {
-    syno.dl.createTask({
-      uri: url,
-      destination: destination,
-    }, () => {
-      resolve();
-    });
-  });
-
-  await promise;
-
-  console.log(`Download task created for ${url}`);
-}
-
 async function downloadFileBatch(syno, urls, destination) {
-  console.log(`Creating download task for: -------------`);
-  console.log(urls.join('\n'));
 
   var promise = new Promise((resolve) => {
     syno.dl.createTask({
@@ -343,7 +293,9 @@ async function downloadFileBatch(syno, urls, destination) {
   });
 
   await promise;
-  console.log("----- DONE -----");
+
+  console.log(`Created download tasks for:`);
+  console.log(urls.join('\n'));
 }
 
 module.exports = {
