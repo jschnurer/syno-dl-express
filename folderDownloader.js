@@ -11,7 +11,7 @@ async function handleUrlsAsync(urls, settings, outputProgressMessage) {
 
   for (let i = 0; i < urls.length; i++) {
     console.log(urls[i]);
-    await recurseFolder(decodeURI(urls[i]), allUrls, allFolders, 1, outputProgressMessage, settings);
+    await recurseFolder(encodeURI(decodeURI(urls[i])), allUrls, allFolders, 1, outputProgressMessage, settings);
   }
 
   // Use the downloader to handle all the URLs.
