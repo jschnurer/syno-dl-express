@@ -95,10 +95,10 @@ async function createDownloadTasks(urls, makeFolders, syno, settings, outputProg
 
   // Now, for each destination folder, tell Syno to download all the files needed to that folder.
   for (let i = 0; i < filesByDestination.length; i++) {
-    const chunkedUrls = chunkArray(filesByDestination[i].urls);
+    const chunkedUrls = chunkArray(filesByDestination[i].urls, 10);
 
     for (let j = 0; j < chunkedUrls.length; j++) {
-      await downloadFileBatch(syno, chunkedUrls, filesByDestination[i].destination);
+      await downloadFileBatch(syno, chunkedUrls[j], filesByDestination[i].destination);
     }
   }
 }
@@ -312,7 +312,7 @@ async function downloadFileBatch(syno, urls, destination) {
   console.log(urls.join('\n'));
 }
 
-function chunkArray(array, chunkSize = 20) {
+function chunkArray(array, chunkSize) {
   const chunks = [];
   for (let i = 0; i < array.length; i += chunkSize) {
     chunks.push(array.slice(i, i + chunkSize));
